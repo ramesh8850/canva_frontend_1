@@ -13,33 +13,25 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
 
   // Separate state for each element type to avoid shared input values
   const [rectangleData, setRectangleData] = useState({
-    x: 50,
-    y: 50,
-    width: 100,
-    height: 100,
     color: '#3498db',
   });
 
   const [circleData, setCircleData] = useState({
-    x: 50,
-    y: 50,
     radius: 50,
     color: '#3498db',
   });
 
   const [textData, setTextData] = useState({
-    x: 50,
-    y: 50,
     text: 'Sample Text',
     font: 'Arial',
+    fontSize: 12,
     color: '#3498db',
+    bold: false,
+    italic: false,
+    underline: false,
   });
 
   const [imageData, setImageData] = useState({
-    x: 50,
-    y: 50,
-    width: 100,
-    height: 100,
     imageUrl: '',
     file: null,
   });
@@ -79,16 +71,41 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
 
     switch (activeTab) {
       case 'rectangle':
-        elementData = { type: 'rectangle', ...rectangleData };
+        elementData = { 
+          type: 'rectangle', 
+          x: 50, 
+          y: 50, 
+          width: parseFloat(rectangleData.width?.toFixed(2)) || 100, 
+          height: parseFloat(rectangleData.height?.toFixed(2)) || 100, 
+          ...rectangleData 
+        };
         break;
       case 'circle':
-        elementData = { type: 'circle', ...circleData };
+        elementData = { 
+          type: 'circle', 
+          x: 50, 
+          y: 50, 
+          radius: parseFloat(circleData.radius?.toFixed(2)) || 50, 
+          ...circleData 
+        };
         break;
       case 'text':
-        elementData = { type: 'text', ...textData };
+        elementData = { 
+          type: 'text', 
+          x: 50, 
+          y: 50, 
+          ...textData 
+        };
         break;
       case 'image':
-        elementData = { type: 'image', ...imageData };
+        elementData = { 
+          type: 'image', 
+          x: 50, 
+          y: 50, 
+          width: parseFloat(imageData.width?.toFixed(2)) || 100, 
+          height: parseFloat(imageData.height?.toFixed(2)) || 100, 
+          ...imageData 
+        };
         // If file is selected, pass it separately
         if (imageData.file) {
           elementData.file = imageData.file;
@@ -137,79 +154,9 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
       </div>
 
       <div className="card-body">
-        {/* Position Controls */}
-        <div className="row mb-3">
-          <div className="col-6">
-            <label className="form-label">X Position</label>
-            <input
-              type="number"
-              className="form-control"
-              value={
-                activeTab === 'rectangle' ? rectangleData.x :
-                activeTab === 'circle' ? circleData.x :
-                activeTab === 'text' ? textData.x :
-                activeTab === 'image' ? imageData.x : 0
-              }
-              onChange={(e) => {
-                const val = parseInt(e.target.value) || 0;
-                if (activeTab === 'rectangle') handleRectangleChange('x', val);
-                else if (activeTab === 'circle') handleCircleChange('x', val);
-                else if (activeTab === 'text') handleTextChange('x', val);
-                else if (activeTab === 'image') handleImageChange('x', val);
-              }}
-              min="0"
-              max={canvasState?.width || 800}
-            />
-          </div>
-          <div className="col-6">
-            <label className="form-label">Y Position</label>
-            <input
-              type="number"
-              className="form-control"
-              value={
-                activeTab === 'rectangle' ? rectangleData.y :
-                activeTab === 'circle' ? circleData.y :
-                activeTab === 'text' ? textData.y :
-                activeTab === 'image' ? imageData.y : 0
-              }
-              onChange={(e) => {
-                const val = parseInt(e.target.value) || 0;
-                if (activeTab === 'rectangle') handleRectangleChange('y', val);
-                else if (activeTab === 'circle') handleCircleChange('y', val);
-                else if (activeTab === 'text') handleTextChange('y', val);
-                else if (activeTab === 'image') handleImageChange('y', val);
-              }}
-              min="0"
-              max={canvasState?.height || 600}
-            />
-          </div>
-        </div>
-
         {/* Rectangle Controls */}
         {activeTab === 'rectangle' && (
           <>
-            <div className="row mb-3">
-              <div className="col-6">
-                <label className="form-label">Width</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={rectangleData.width}
-                  onChange={(e) => handleRectangleChange('width', parseInt(e.target.value) || 0)}
-                  min="1"
-                />
-              </div>
-              <div className="col-6">
-                <label className="form-label">Height</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={rectangleData.height}
-                  onChange={(e) => handleRectangleChange('height', parseInt(e.target.value) || 0)}
-                  min="1"
-                />
-              </div>
-            </div>
             <div className="mb-3">
               <label className="form-label">Color</label>
               <ColorPicker
@@ -286,6 +233,55 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
               </select>
             </div>
             <div className="mb-3">
+              <label className="form-label">Font Size</label>
+              <input
+                type="number"
+                className="form-control"
+                value={textData.fontSize}
+                onChange={(e) => handleTextChange('fontSize', parseInt(e.target.value) || 12)}
+                min="6"
+                max="72"
+              />
+            </div>
+            <div className="mb-3 d-flex gap-3">
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="boldCheck"
+                  checked={textData.bold}
+                  onChange={(e) => handleTextChange('bold', e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="boldCheck">
+                  Bold
+                </label>
+              </div>
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="italicCheck"
+                  checked={textData.italic}
+                  onChange={(e) => handleTextChange('italic', e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="italicCheck">
+                  Italic
+                </label>
+              </div>
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="underlineCheck"
+                  checked={textData.underline}
+                  onChange={(e) => handleTextChange('underline', e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="underlineCheck">
+                  Underline
+                </label>
+              </div>
+            </div>
+            <div className="mb-3">
               <label className="form-label">Color</label>
               <ColorPicker
                 color={textData.color}
@@ -325,28 +321,6 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
                 accept="image/*"
                 onChange={handleFileChange}
               />
-            </div>
-            <div className="row mb-3">
-              <div className="col-6">
-                <label className="form-label">Width</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={imageData.width}
-                  onChange={(e) => handleImageChange('width', parseInt(e.target.value) || 0)}
-                  min="1"
-                />
-              </div>
-              <div className="col-6">
-                <label className="form-label">Height</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={imageData.height}
-                  onChange={(e) => handleImageChange('height', parseInt(e.target.value) || 0)}
-                  min="1"
-                />
-              </div>
             </div>
             <button
               className="btn btn-info-custom btn-custom w-100"

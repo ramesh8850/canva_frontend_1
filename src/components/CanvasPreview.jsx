@@ -1,9 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { FaDownload, FaTrash, FaEye } from 'react-icons/fa';
 
-const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLoading, onUpdateElementPosition }) => {
+const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLoading, onUpdateElementPosition, onUpdateElementText, onUpdateElementSize }) => {
   const [draggingIndex, setDraggingIndex] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [resizingIndex, setResizingIndex] = useState(null);
+  const [resizeStartPos, setResizeStartPos] = useState({ x: 0, y: 0 });
+  const [resizeStartSize, setResizeStartSize] = useState({ width: 0, height: 0, radius: 0, fontSize: 0 });
   const containerRef = useRef(null);
 
   if (!canvasState) {
@@ -31,7 +36,49 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
     setDragOffset({ x: offsetX, y: offsetY });
   };
 
+  const handleResizeMouseDown = (e, index) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizingIndex(index);
+    setResizeStartPos({ x: e.clientX, y: e.clientY });
+    const element = elements[index];
+    setResizeStartSize({
+      width: element.width || 0,
+      height: element.height || 0,
+      radius: element.radius || 0,
+      fontSize: element.fontSize || 12,
+    });
+  };
+
   const handleMouseMove = (e) => {
+    if (resizingIndex !== null) {
+      e.preventDefault();
+      const deltaX = (e.clientX - resizeStartPos.x) / scale;
+      const deltaY = (e.clientY - resizeStartPos.y) / scale;
+      const element = elements[resizingIndex];
+      let newWidth = resizeStartSize.width;
+      let newHeight = resizeStartSize.height;
+      let newRadius = resizeStartSize.radius;
+      let newFontSize = resizeStartSize.fontSize;
+
+      if (element.type === "rectangle" || element.type === "image") {
+        newWidth = Math.max(10, resizeStartSize.width + deltaX);
+        newHeight = Math.max(10, resizeStartSize.height + deltaY);
+      } else if (element.type === "circle") {
+        newRadius = Math.max(5, resizeStartSize.radius + Math.max(deltaX, deltaY));
+      } else if (element.type === "text") {
+        newFontSize = Math.max(6, resizeStartSize.fontSize + deltaY);
+      }
+
+      onUpdateElementSize(resizingIndex, {
+        width: newWidth,
+        height: newHeight,
+        radius: newRadius,
+        fontSize: newFontSize,
+      });
+      return;
+    }
+
     if (draggingIndex === null) return;
     e.preventDefault();
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -46,9 +93,47 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
   };
 
   const handleMouseUp = (e) => {
+    if (resizingIndex !== null) {
+      e.preventDefault();
+      // Round size values before sending to backend
+      const element = elements[resizingIndex];
+      const roundedSizeData = {};
+      if (element.width !== undefined) {
+        roundedSizeData.width = Math.round(element.width * 100) / 100;
+      }
+      if (element.height !== undefined) {
+        roundedSizeData.height = Math.round(element.height * 100) / 100;
+      }
+      if (element.radius !== undefined) {
+        roundedSizeData.radius = Math.round(element.radius * 100) / 100;
+      }
+      if (element.fontSize !== undefined) {
+        roundedSizeData.fontSize = Math.round(element.fontSize * 100) / 100;
+      }
+      onUpdateElementSize(resizingIndex, roundedSizeData);
+      setResizingIndex(null);
+      return;
+    }
     if (draggingIndex !== null) {
       e.preventDefault();
       setDraggingIndex(null);
+    }
+  };
+
+  const handleTextDoubleClick = (index) => {
+    setEditingIndex(index);
+    setEditingText(elements[index].text);
+  };
+
+  const handleTextChange = (e) => {
+    setEditingText(e.target.value);
+  };
+
+  const handleTextBlur = () => {
+    if (editingIndex !== null) {
+      onUpdateElementText(editingIndex, editingText);
+      setEditingIndex(null);
+      setEditingText('');
     }
   };
 
@@ -59,6 +144,18 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
       top: element.y * scale,
       cursor: 'grab',
       userSelect: 'none',
+    };
+
+    const resizeHandleStyle = {
+      position: 'absolute',
+      width: 10,
+      height: 10,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      borderRadius: 2,
+      right: 0,
+      bottom: 0,
+      cursor: 'nwse-resize',
+      zIndex: 10,
     };
 
     switch (element.type) {
@@ -75,7 +172,12 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               border: '1px solid rgba(0,0,0,0.1)',
             }}
             onMouseDown={(e) => handleMouseDown(e, index)}
-          />
+          >
+            <div
+              style={resizeHandleStyle}
+              onMouseDown={(e) => handleResizeMouseDown(e, index)}
+            />
+          </div>
         );
 
       case 'circle':
@@ -92,10 +194,50 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               border: '1px solid rgba(0,0,0,0.1)',
             }}
             onMouseDown={(e) => handleMouseDown(e, index)}
-          />
+          >
+            <div
+              style={resizeHandleStyle}
+              onMouseDown={(e) => handleResizeMouseDown(e, index)}
+            />
+          </div>
         );
 
       case 'text':
+        if (editingIndex === index) {
+          return (
+            <textarea
+              key={index}
+              className="element-textarea"
+              style={{
+                ...style,
+                color: element.color,
+                fontFamily: element.font || 'Arial',
+                fontSize: (element.fontSize || 12) * scale,
+                whiteSpace: 'normal',
+                resize: 'none',
+                overflow: 'hidden',
+                border: '1px solid #ccc',
+                padding: '2px',
+                backgroundColor: 'white',
+                cursor: 'text',
+                width: 'auto',
+                minWidth: 50,
+                maxWidth: 300,
+                height: 'auto',
+                minHeight: 20,
+              }}
+              value={editingText}
+              onChange={handleTextChange}
+              onBlur={handleTextBlur}
+              autoFocus
+            />
+          );
+        }
+        // Dynamically calculate width based on text length and font size
+        const textLength = element.text ? element.text.length : 0;
+        const fontSize = element.fontSize || 12;
+        const width = Math.min(Math.max(textLength * fontSize * 0.6, 50), 300) * scale;
+        const height = fontSize * 1.2 * scale;
         return (
           <div
             key={index}
@@ -104,9 +246,17 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               ...style,
               color: element.color,
               fontFamily: element.font || 'Arial',
-              fontSize: 12 * scale,
+              fontSize: fontSize * scale,
               whiteSpace: 'nowrap',
+              fontWeight: element.bold ? 'bold' : 'normal',
+              fontStyle: element.italic ? 'italic' : 'normal',
+              textDecoration: element.underline ? 'underline' : 'none',
+              width: width,
+              height: height,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
+            onDoubleClick={() => handleTextDoubleClick(index)}
             onMouseDown={(e) => handleMouseDown(e, index)}
           >
             {element.text}
@@ -131,6 +281,7 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               color: '#666',
               cursor: 'grab',
               userSelect: 'none',
+              position: 'relative',
             }}
             onMouseDown={(e) => handleMouseDown(e, index)}
           >
@@ -152,6 +303,20 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
             ) : (
               'Image'
             )}
+            <div
+              style={{
+                position: 'absolute',
+                width: 10,
+                height: 10,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                borderRadius: 2,
+                right: 0,
+                bottom: 0,
+                cursor: 'nwse-resize',
+                zIndex: 10,
+              }}
+              onMouseDown={(e) => handleResizeMouseDown(e, index)}
+            />
           </div>
         );
 

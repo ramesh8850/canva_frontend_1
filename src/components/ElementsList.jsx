@@ -20,15 +20,16 @@ const ElementsList = ({ elements, onRemoveElement }) => {
   };
 
   const getElementDescription = (element) => {
+    const round = (num) => (typeof num === 'number' ? num.toFixed(2) : num);
     switch (element.type) {
       case 'rectangle':
-        return `${element.width}×${element.height}px`;
+        return `${round(element.width)}×${round(element.height)}px`;
       case 'circle':
-        return `r=${element.radius}px`;
+        return `r=${round(element.radius)}px`;
       case 'text':
         return `"${element.text.substring(0, 20)}${element.text.length > 20 ? '...' : ''}"`;
       case 'image':
-        return `${element.width}×${element.height}px`;
+        return `${round(element.width)}×${round(element.height)}px`;
       default:
         return '';
     }
@@ -82,7 +83,7 @@ const ElementsList = ({ elements, onRemoveElement }) => {
               
               <div className="ms-auto">
                 <small className="text-muted me-2">
-                  ({element.x}, {element.y})
+                  ({element.x.toFixed(2)}, {element.y.toFixed(2)})
                 </small>
                 <button
                   className="btn btn-outline-danger btn-sm"

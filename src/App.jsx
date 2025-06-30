@@ -85,14 +85,83 @@ function App() {
       return updatedElements;
     });
 
+    // Round positions to 2 decimals before sending to backend
+    const roundedX = Math.round(newX * 100) / 100;
+    const roundedY = Math.round(newY * 100) / 100;
+
     // Update backend with new position
     try {
       const element = elements[index];
       if (element) {
-        await apiService.updateElementPosition(index, newX, newY);
+        await apiService.updateElementPosition(index, roundedX, roundedY);
       }
     } catch (error) {
       console.error('Failed to update element position in backend:', error);
+    }
+  };
+
+  const updateElementText = async (index, newText, fontSize, bold, italic, underline) => {
+    setElements(prevElements => {
+      const updatedElements = [...prevElements];
+      if (updatedElements[index]) {
+        // Update width and height based on text length and font size
+        const textLength = newText ? newText.length : 0;
+        const width = Math.min(Math.max(textLength * fontSize * 0.6, 50), 300);
+        const height = fontSize * 1.2;
+
+        updatedElements[index] = {
+          ...updatedElements[index],
+          text: newText,
+          fontSize,
+          bold,
+          italic,
+          underline,
+          width,
+          height,
+        };
+      }
+      return updatedElements;
+    });
+
+    // Update backend with new text and styles
+    try {
+      await apiService.updateElementText(index, newText, fontSize, bold, italic, underline);
+    } catch (error) {
+      console.error('Failed to update element text in backend:', error);
+    }
+  };
+
+  const updateElementSize = async (index, sizeData) => {
+    setElements(prevElements => {
+      const updatedElements = [...prevElements];
+      if (updatedElements[index]) {
+        updatedElements[index] = {
+          ...updatedElements[index],
+          ...sizeData,
+        };
+      }
+      return updatedElements;
+    });
+
+    // Round size values to 2 decimals before sending to backend
+    const roundedSizeData = { ...sizeData };
+    if (roundedSizeData.width !== undefined) {
+      roundedSizeData.width = Math.round(roundedSizeData.width * 100) / 100;
+    }
+    if (roundedSizeData.height !== undefined) {
+      roundedSizeData.height = Math.round(roundedSizeData.height * 100) / 100;
+    }
+    if (roundedSizeData.radius !== undefined) {
+      roundedSizeData.radius = Math.round(roundedSizeData.radius * 100) / 100;
+    }
+    if (roundedSizeData.fontSize !== undefined) {
+      roundedSizeData.fontSize = Math.round(roundedSizeData.fontSize * 100) / 100;
+    }
+
+    try {
+      await apiService.updateElementSize(index, roundedSizeData);
+    } catch (error) {
+      console.error('Failed to update element size in backend:', error);
     }
   };
 
@@ -186,6 +255,8 @@ function App() {
                 onClearCanvas={clearCanvas}
                 isLoading={isLoading}
                 onUpdateElementPosition={updateElementPosition}
+                onUpdateElementText={updateElementText}
+                onUpdateElementSize={updateElementSize}
               />
             </div>
           </div>

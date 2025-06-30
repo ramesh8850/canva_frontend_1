@@ -27,6 +27,11 @@ const addText = async (data) => {
   return response.data;
 };
 
+const updateElementText = async (id, text, fontSize, bold, italic, underline) => {
+  const response = await apiClient.put(`/canvas/element/${id}/text`, { text, fontSize, bold, italic, underline });
+  return response.data;
+};
+
 const addImageUrl = async (data) => {
   const response = await apiClient.post('/canvas/image', data);
   return response.data;
@@ -53,6 +58,11 @@ const updateElementPosition = async (id, x, y) => {
   return response.data;
 };
 
+const updateElementSize = async (id, sizeData) => {
+  const response = await apiClient.put(`/canvas/element/${id}/size`, sizeData);
+  return response.data;
+};
+
 const exportToPDF = async (canvasState) => {
   const response = await apiClient.get('/export/pdf');
   return response.data;
@@ -63,8 +73,10 @@ export default {
   addRectangle,
   addCircle,
   addText,
+  updateElementText,
   addImageUrl,
   addImageFile,
   updateElementPosition,
+  updateElementSize,
   exportToPDF,
 };
