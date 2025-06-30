@@ -1,27 +1,10 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { FaDownload, FaTrash, FaEye } from 'react-icons/fa';
 
-const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLoading }) => {
-  // Function to handle PDF download
-  // const handleDownloadPDF = () => {
-  //   if (!(onExportPDF?.success)) {
-  //     alert('Please generate PDF first');
-  //     return;
-  //   }
-
-  //   const link = document.createElement('a');
-  //   link.href = onExportPDF.url;
-  //   link.download = onExportPDF.url.split('/').pop() || 'design.pdf';
-  //   link.style.display = 'none';
-
-  //   document.body.appendChild(link);
-  //   link.click();
-
-  //   setTimeout(() => {
-  //     document.body.removeChild(link);
-  //   }, 100);
-  // };
-
+const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLoading, onUpdateElementPosition }) => {
+  const [draggingIndex, setDraggingIndex] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
 
   if (!canvasState) {
     return (
@@ -39,10 +22,43 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
   const scaledWidth = canvasState.width * scale;
   const scaledHeight = canvasState.height * scale;
 
+  const handleMouseDown = (e, index) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    setDraggingIndex(index);
+    setDragOffset({ x: offsetX, y: offsetY });
+  };
+
+  const handleMouseMove = (e) => {
+    if (draggingIndex === null) return;
+    e.preventDefault();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    let newX = (e.clientX - containerRect.left - dragOffset.x) / scale;
+    let newY = (e.clientY - containerRect.top - dragOffset.y) / scale;
+
+    // Clamp positions within canvas bounds
+    newX = Math.max(0, Math.min(newX, canvasState.width));
+    newY = Math.max(0, Math.min(newY, canvasState.height));
+
+    onUpdateElementPosition(draggingIndex, newX, newY);
+  };
+
+  const handleMouseUp = (e) => {
+    if (draggingIndex !== null) {
+      e.preventDefault();
+      setDraggingIndex(null);
+    }
+  };
+
   const renderElement = (element, index) => {
     const style = {
+      position: 'absolute',
       left: element.x * scale,
       top: element.y * scale,
+      cursor: 'grab',
+      userSelect: 'none',
     };
 
     switch (element.type) {
@@ -58,9 +74,10 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               backgroundColor: element.color,
               border: '1px solid rgba(0,0,0,0.1)',
             }}
+            onMouseDown={(e) => handleMouseDown(e, index)}
           />
         );
-      
+
       case 'circle':
         return (
           <div
@@ -74,9 +91,10 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               borderRadius: '50%',
               border: '1px solid rgba(0,0,0,0.1)',
             }}
+            onMouseDown={(e) => handleMouseDown(e, index)}
           />
         );
-      
+
       case 'text':
         return (
           <div
@@ -89,11 +107,12 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               fontSize: 12 * scale,
               whiteSpace: 'nowrap',
             }}
+            onMouseDown={(e) => handleMouseDown(e, index)}
           >
             {element.text}
           </div>
         );
-      
+
       case 'image':
         return (
           <div
@@ -110,7 +129,10 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
               justifyContent: 'center',
               fontSize: '12px',
               color: '#666',
+              cursor: 'grab',
+              userSelect: 'none',
             }}
+            onMouseDown={(e) => handleMouseDown(e, index)}
           >
             {element.imageUrl ? (
               <img
@@ -120,6 +142,7 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
+                  pointerEvents: 'none',
                 }}
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -131,7 +154,7 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
             )}
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -184,7 +207,12 @@ const CanvasPreview = ({ canvasState, elements, onExportPDF, onClearCanvas, isLo
           width: scaledWidth,
           height: scaledHeight,
           margin: '0 auto',
+          userSelect: draggingIndex !== null ? 'none' : 'auto',
         }}
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         {elements.map(renderElement)}
         

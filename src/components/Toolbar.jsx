@@ -10,37 +10,104 @@ import ColorPicker from './ColorPicker';
 
 const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
   const [activeTab, setActiveTab] = useState('rectangle');
-  const [formData, setFormData] = useState({
+
+  // Separate state for each element type to avoid shared input values
+  const [rectangleData, setRectangleData] = useState({
     x: 50,
     y: 50,
     width: 100,
     height: 100,
-    radius: 50,
     color: '#3498db',
-    text: 'Sample Text',
-    font: 'Arial',
-    imageUrl: '',
   });
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const [circleData, setCircleData] = useState({
+    x: 50,
+    y: 50,
+    radius: 50,
+    color: '#3498db',
+  });
+
+  const [textData, setTextData] = useState({
+    x: 50,
+    y: 50,
+    text: 'Sample Text',
+    font: 'Arial',
+    color: '#3498db',
+  });
+
+  const [imageData, setImageData] = useState({
+    x: 50,
+    y: 50,
+    width: 100,
+    height: 100,
+    imageUrl: '',
+    file: null,
+  });
+
+  // Handlers for input changes per element type
+  const handleRectangleChange = (field, value) => {
+    setRectangleData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddElement = (type) => {
+  const handleCircleChange = (field, value) => {
+    setCircleData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleTextChange = (field, value) => {
+    setTextData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleImageChange = (field, value) => {
+    setImageData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Handle file input change but do NOT auto upload
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    handleImageChange('file', file);
+    // Clear imageUrl if file is selected
+    if (file) {
+      handleImageChange('imageUrl', '');
+    }
+  };
+
+  // Handle add element button click
+  const handleAddElement = () => {
     if (!canvasState) return;
 
-    const elementData = { type, ...formData };
-    
-    if (type === 'image' && fileInputRef.current?.files[0]) {
-      elementData.file = fileInputRef.current.files[0];
+    let elementData = null;
+
+    switch (activeTab) {
+      case 'rectangle':
+        elementData = { type: 'rectangle', ...rectangleData };
+        break;
+      case 'circle':
+        elementData = { type: 'circle', ...circleData };
+        break;
+      case 'text':
+        elementData = { type: 'text', ...textData };
+        break;
+      case 'image':
+        elementData = { type: 'image', ...imageData };
+        // If file is selected, pass it separately
+        if (imageData.file) {
+          elementData.file = imageData.file;
+          // Remove imageUrl to avoid conflict
+          delete elementData.imageUrl;
+        }
+        break;
+      default:
+        return;
     }
 
     onAddElement(elementData);
-  };
 
-  const handleFileUpload = () => {
-    if (fileInputRef.current?.files[0]) {
-      handleAddElement('image');
+    // Optionally reset file input after adding image
+    if (activeTab === 'image') {
+      setImageData(prev => ({ ...prev, file: null }));
+      if (fileInputRef?.current) {
+        fileInputRef.current.value = null;
+      }
     }
   };
 
@@ -68,7 +135,7 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
           ))}
         </ul>
       </div>
-      
+
       <div className="card-body">
         {/* Position Controls */}
         <div className="row mb-3">
@@ -77,8 +144,19 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
             <input
               type="number"
               className="form-control"
-              value={formData.x}
-              onChange={(e) => handleInputChange('x', parseInt(e.target.value))}
+              value={
+                activeTab === 'rectangle' ? rectangleData.x :
+                activeTab === 'circle' ? circleData.x :
+                activeTab === 'text' ? textData.x :
+                activeTab === 'image' ? imageData.x : 0
+              }
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 0;
+                if (activeTab === 'rectangle') handleRectangleChange('x', val);
+                else if (activeTab === 'circle') handleCircleChange('x', val);
+                else if (activeTab === 'text') handleTextChange('x', val);
+                else if (activeTab === 'image') handleImageChange('x', val);
+              }}
               min="0"
               max={canvasState?.width || 800}
             />
@@ -88,8 +166,19 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
             <input
               type="number"
               className="form-control"
-              value={formData.y}
-              onChange={(e) => handleInputChange('y', parseInt(e.target.value))}
+              value={
+                activeTab === 'rectangle' ? rectangleData.y :
+                activeTab === 'circle' ? circleData.y :
+                activeTab === 'text' ? textData.y :
+                activeTab === 'image' ? imageData.y : 0
+              }
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 0;
+                if (activeTab === 'rectangle') handleRectangleChange('y', val);
+                else if (activeTab === 'circle') handleCircleChange('y', val);
+                else if (activeTab === 'text') handleTextChange('y', val);
+                else if (activeTab === 'image') handleImageChange('y', val);
+              }}
               min="0"
               max={canvasState?.height || 600}
             />
@@ -105,8 +194,8 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
                 <input
                   type="number"
                   className="form-control"
-                  value={formData.width}
-                  onChange={(e) => handleInputChange('width', parseInt(e.target.value))}
+                  value={rectangleData.width}
+                  onChange={(e) => handleRectangleChange('width', parseInt(e.target.value) || 0)}
                   min="1"
                 />
               </div>
@@ -115,8 +204,8 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
                 <input
                   type="number"
                   className="form-control"
-                  value={formData.height}
-                  onChange={(e) => handleInputChange('height', parseInt(e.target.value))}
+                  value={rectangleData.height}
+                  onChange={(e) => handleRectangleChange('height', parseInt(e.target.value) || 0)}
                   min="1"
                 />
               </div>
@@ -124,13 +213,13 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
             <div className="mb-3">
               <label className="form-label">Color</label>
               <ColorPicker
-                color={formData.color}
-                onChange={(color) => handleInputChange('color', color)}
+                color={rectangleData.color}
+                onChange={(color) => handleRectangleChange('color', color)}
               />
             </div>
             <button
               className="btn btn-primary-custom btn-custom w-100"
-              onClick={() => handleAddElement('rectangle')}
+              onClick={handleAddElement}
               disabled={isLoading || !canvasState}
             >
               <FaPlus className="me-2" />
@@ -147,21 +236,21 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
               <input
                 type="number"
                 className="form-control"
-                value={formData.radius}
-                onChange={(e) => handleInputChange('radius', parseInt(e.target.value))}
+                value={circleData.radius}
+                onChange={(e) => handleCircleChange('radius', parseInt(e.target.value) || 0)}
                 min="1"
               />
             </div>
             <div className="mb-3">
               <label className="form-label">Color</label>
               <ColorPicker
-                color={formData.color}
-                onChange={(color) => handleInputChange('color', color)}
+                color={circleData.color}
+                onChange={(color) => handleCircleChange('color', color)}
               />
             </div>
             <button
               className="btn btn-success-custom btn-custom w-100"
-              onClick={() => handleAddElement('circle')}
+              onClick={handleAddElement}
               disabled={isLoading || !canvasState}
             >
               <FaPlus className="me-2" />
@@ -178,8 +267,8 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
               <input
                 type="text"
                 className="form-control"
-                value={formData.text}
-                onChange={(e) => handleInputChange('text', e.target.value)}
+                value={textData.text}
+                onChange={(e) => handleTextChange('text', e.target.value)}
                 placeholder="Enter your text"
               />
             </div>
@@ -187,8 +276,8 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
               <label className="form-label">Font</label>
               <select
                 className="form-control"
-                value={formData.font}
-                onChange={(e) => handleInputChange('font', e.target.value)}
+                value={textData.font}
+                onChange={(e) => handleTextChange('font', e.target.value)}
               >
                 <option value="Arial">Arial</option>
                 <option value="Helvetica">Helvetica</option>
@@ -199,13 +288,13 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
             <div className="mb-3">
               <label className="form-label">Color</label>
               <ColorPicker
-                color={formData.color}
-                onChange={(color) => handleInputChange('color', color)}
+                color={textData.color}
+                onChange={(color) => handleTextChange('color', color)}
               />
             </div>
             <button
               className="btn btn-warning-custom btn-custom w-100"
-              onClick={() => handleAddElement('text')}
+              onClick={handleAddElement}
               disabled={isLoading || !canvasState}
             >
               <FaPlus className="me-2" />
@@ -222,8 +311,8 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
               <input
                 type="url"
                 className="form-control"
-                value={formData.imageUrl}
-                onChange={(e) => handleInputChange('imageUrl', e.target.value)}
+                value={imageData.imageUrl}
+                onChange={(e) => handleImageChange('imageUrl', e.target.value)}
                 placeholder="https://example.com/image.jpg"
               />
             </div>
@@ -234,7 +323,7 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
                 className="form-control"
                 ref={fileInputRef}
                 accept="image/*"
-                onChange={handleFileUpload}
+                onChange={handleFileChange}
               />
             </div>
             <div className="row mb-3">
@@ -243,8 +332,8 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
                 <input
                   type="number"
                   className="form-control"
-                  value={formData.width}
-                  onChange={(e) => handleInputChange('width', parseInt(e.target.value))}
+                  value={imageData.width}
+                  onChange={(e) => handleImageChange('width', parseInt(e.target.value) || 0)}
                   min="1"
                 />
               </div>
@@ -253,16 +342,19 @@ const Toolbar = ({ onAddElement, isLoading, canvasState, fileInputRef }) => {
                 <input
                   type="number"
                   className="form-control"
-                  value={formData.height}
-                  onChange={(e) => handleInputChange('height', parseInt(e.target.value))}
+                  value={imageData.height}
+                  onChange={(e) => handleImageChange('height', parseInt(e.target.value) || 0)}
                   min="1"
                 />
               </div>
             </div>
             <button
               className="btn btn-info-custom btn-custom w-100"
-              onClick={() => handleAddElement('image')}
-              disabled={isLoading || !canvasState || (!formData.imageUrl && !fileInputRef.current?.files[0])}
+              onClick={handleAddElement}
+              disabled={
+                isLoading || !canvasState || 
+                (!imageData.imageUrl && !imageData.file)
+              }
             >
               <FaPlus className="me-2" />
               Add Image

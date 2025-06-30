@@ -72,6 +72,30 @@ function App() {
     }
   };
 
+  const updateElementPosition = async (index, newX, newY) => {
+    setElements(prevElements => {
+      const updatedElements = [...prevElements];
+      if (updatedElements[index]) {
+        updatedElements[index] = {
+          ...updatedElements[index],
+          x: newX,
+          y: newY,
+        };
+      }
+      return updatedElements;
+    });
+
+    // Update backend with new position
+    try {
+      const element = elements[index];
+      if (element) {
+        await apiService.updateElementPosition(index, newX, newY);
+      }
+    } catch (error) {
+      console.error('Failed to update element position in backend:', error);
+    }
+  };
+
   const exportToPDF = async () => {
     if (!canvasState || elements.length === 0) {
       toast.error('Please add some elements to the canvas first');
@@ -161,6 +185,7 @@ function App() {
                 onExportPDF={exportToPDF}
                 onClearCanvas={clearCanvas}
                 isLoading={isLoading}
+                onUpdateElementPosition={updateElementPosition}
               />
             </div>
           </div>
